@@ -365,69 +365,68 @@
         }
 
         // Form submission handler
-        document.getElementById('harrisBookingForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Check if Google Script URL has been set
-            if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
-                alert('Please update the Google Apps Script URL in the JavaScript code before submitting.');
-                return;
-            }
-            
-            // Show loading message
-            document.getElementById('submitButton').disabled = true;
-            document.getElementById('loadingMessage').style.display = 'block';
-            document.getElementById('successMessage').style.display = 'none';
-            document.getElementById('errorMessage').style.display = 'none';
-            
-            // Get form data
-            const formData = new FormData(e.target);
-            const accommodationValue = formData.get('accommodation');
-            
-            // Prepare data object
-            const data = {
-                name: formData.get('name'),
-                email: formData.get('email'),
-                phone: formData.get('phone'),
-                accommodationName: accommodationInfo[accommodationValue]?.name || '',
-                roomType: accommodationInfo[accommodationValue]?.roomType || '',
-                nights: formData.get('nights'),
-                checkin: formData.get('checkin'),
-                breakfast: document.getElementById('breakfast').checked ? 'Yes' : 
-                           (accommodationValue?.includes('drinishader') ? 'No' : 'Included'),
-                roomShare: formData.get('roomShare'),
-                boatTrip: formData.get('boatTrip'),
-                boatDay: formData.get('boatTrip') === 'yes' ? formData.get('boatDay') : 'N/A',
-                dietary: formData.get('dietary'),
-                comments: formData.get('comments')
-            };
-            
-            // Submit to Google Sheets
-           fetch(GOOGLE_SCRIPT_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: JSON.stringify(data)
-            })
-            .then(() => {
-                // With no-cors, we can't read the response, so we assume success
-                document.getElementById('successMessage').style.display = 'block';
-                document.getElementById('harrisBookingForm').reset();
-                document.getElementById('accommodationDetails').style.display = 'none';
-                document.getElementById('breakfastOption').style.display = 'none';
-                document.getElementById('boatDaySelection').style.display = 'none';
-                
-                // Scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('errorMessage').style.display = 'block';
-            })
-            .finally(() => {
-                document.getElementById('submitButton').disabled = false;
-                document.getElementById('loadingMessage').style.display = 'none';
-            });
-        });
+document.getElementById('harrisBookingForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Check if Google Script URL has been set
+    if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
+        alert('Please update the Google Apps Script URL in the JavaScript code before submitting.');
+        return;
+    }
+    
+    // Show loading message
+    document.getElementById('submitButton').disabled = true;
+    document.getElementById('loadingMessage').style.display = 'block';
+    document.getElementById('successMessage').style.display = 'none';
+    document.getElementById('errorMessage').style.display = 'none';
+    
+    // Get form data
+    const formData = new FormData(e.target);
+    const accommodationValue = formData.get('accommodation');
+    
+    // Prepare data as URL parameters for no-cors mode
+    const params = new URLSearchParams();
+    params.append('name', formData.get('name') || '');
+    params.append('email', formData.get('email') || '');
+    params.append('phone', formData.get('phone') || '');
+    params.append('accommodationName', accommodationInfo[accommodationValue]?.name || '');
+    params.append('roomType', accommodationInfo[accommodationValue]?.roomType || '');
+    params.append('nights', formData.get('nights') || '');
+    params.append('checkin', formData.get('checkin') || '');
+    params.append('breakfast', document.getElementById('breakfast').checked ? 'Yes' : 
+                   (accommodationValue?.includes('drinishader') ? 'No' : 'Included'));
+    params.append('roomShare', formData.get('roomShare') || '');
+    params.append('boatTrip', formData.get('boatTrip') || '');
+    params.append('boatDay', formData.get('boatTrip') === 'yes' ? (formData.get('boatDay') || '') : 'N/A');
+    params.append('dietary', formData.get('dietary') || '');
+    params.append('comments', formData.get('comments') || '');
+    
+    // Submit to Google Sheets
+    fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: params.toString()
+    })
+    .then(() => {
+        // With no-cors, we can't read the response, so we assume success
+        document.getElementById('successMessage').style.display = 'block';
+        document.getElementById('harrisBookingForm').reset();
+        document.getElementById('accommodationDetails').style.display = 'none';
+        document.getElementById('breakfastOption').style.display = 'none';
+        document.getElementById('boatDaySelection').style.display = 'none';
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('errorMessage').style.display = 'block';
+    })
+    .finally(() => {
+        document.getElementById('submitButton').disabled = false;
+        document.getElementById('loadingMessage').style.display = 'none';
+    });
+});
     </script>
 </body>
 </html>
