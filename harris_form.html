@@ -136,6 +136,9 @@
         .required {
             color: #e74c3c;
         }
+        #hidden_iframe {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -154,7 +157,16 @@
             There was an error submitting your form. Please try again or contact Murray directly.
         </div>
 
-        <form id="harrisBookingForm">
+        <!-- Hidden iframe for form submission -->
+        <iframe name="hidden_iframe" id="hidden_iframe"></iframe>
+
+        <!-- Form that submits to Google Apps Script via iframe -->
+        <form id="harrisBookingForm" 
+              action="https://script.google.com/macros/s/AKfycbyTtopKDDdbHCTFovRB32leEIjgaekPOdhFChzRIoCGHYp1YNfhiVXzSCI8EWc1mpM/exec" 
+              method="POST" 
+              target="hidden_iframe"
+              onsubmit="return submitForm();">
+            
             <h2>Personal Information</h2>
             
             <div class="form-group">
@@ -189,6 +201,10 @@
                 <div id="accommodationDetails" class="accommodation-details" style="display: none;"></div>
             </div>
 
+            <!-- Hidden fields to store accommodation details -->
+            <input type="hidden" id="accommodationName" name="accommodationName">
+            <input type="hidden" id="roomType" name="roomType">
+
             <div class="form-group">
                 <label for="nights">Number of Nights <span class="required">*</span></label>
                 <select id="nights" name="nights" required>
@@ -211,11 +227,14 @@
 
             <div class="form-group" id="breakfastOption" style="display: none;">
                 <label>Add Breakfast? (£8 per day)</label>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="breakfast" name="breakfast">
-                    <label for="breakfast" style="font-weight: normal;">Yes, I would like to add breakfast</label>
-                </div>
+                <select id="breakfastSelect" name="breakfast">
+                    <option value="No">No, room only</option>
+                    <option value="Yes">Yes, add breakfast (£8/day)</option>
+                </select>
             </div>
+            
+            <!-- Hidden field for breakfast when not Drinishader -->
+            <input type="hidden" id="breakfastHidden" name="breakfastHidden" value="">
 
             <div class="form-group">
                 <label for="roomShare">Room Sharing Preference</label>
@@ -244,20 +263,12 @@
 
             <div class="form-group" id="boatDaySelection" style="display: none;">
                 <label>Preferred Day for Boat Trip <span class="required">*</span></label>
-                <div class="radio-group">
-                    <div class="radio-option">
-                        <input type="radio" id="saturday" name="boatDay" value="Saturday 9th May">
-                        <label for="saturday" style="font-weight: normal;">Saturday 9th May</label>
-                    </div>
-                    <div class="radio-option">
-                        <input type="radio" id="sunday" name="boatDay" value="Sunday 10th May">
-                        <label for="sunday" style="font-weight: normal;">Sunday 10th May</label>
-                    </div>
-                    <div class="radio-option">
-                        <input type="radio" id="eitherDay" name="boatDay" value="Either day works">
-                        <label for="eitherDay" style="font-weight: normal;">Either day works for me</label>
-                    </div>
-                </div>
+                <select id="boatDaySelect" name="boatDay">
+                    <option value="">-- Please select --</option>
+                    <option value="Saturday 9th May">Saturday 9th May</option>
+                    <option value="Sunday 10th May">Sunday 10th May</option>
+                    <option value="Either day works">Either day works for me</option>
+                </select>
             </div>
 
             <h2>Additional Information</h2>
@@ -282,7 +293,12 @@
 
     <script>
         // IMPORTANT: Replace this with your actual Google Apps Script Web App URL
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzf4Nl16pSgFO8X___ftMNwBN9ixtqH2sTTqjHhm2QXsY730jVzAkfzqwld11RBTCs/exec';
+        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
+        
+        // Set the form action to the Google Script URL
+        window.onload = function() {
+            document.getElementById('harrisBookingForm').action = GOOGLE_SCRIPT_URL;
+        };
         
         // Accommodation information
         const accommodationInfo = {
@@ -327,106 +343,110 @@
             const select = document.getElementById('accommodation');
             const details = document.getElementById('accommodationDetails');
             const breakfastOption = document.getElementById('breakfastOption');
+            const accommodationName = document.getElementById('accommodationName');
+            const roomType = document.getElementById('roomType');
+            const breakfastHidden = document.getElementById('breakfastHidden');
+            const breakfastSelect = document.getElementById('breakfastSelect');
             
             if (select.value && accommodationInfo[select.value]) {
+                // Show accommodation details
                 details.innerHTML = accommodationInfo[select.value].details;
                 details.style.display = 'block';
                 
-                // Show breakfast option only for Drinishader
+                // Set hidden fields
+                accommodationName.value = accommodationInfo[select.value].name;
+                roomType.value = accommodationInfo[select.value].roomType;
+                
+                // Handle breakfast option
                 if (select.value.includes('drinishader')) {
                     breakfastOption.style.display = 'block';
+                    breakfastSelect.disabled = false;
+                    breakfastHidden.value = '';
                 } else {
                     breakfastOption.style.display = 'none';
-                    document.getElementById('breakfast').checked = false;
+                    breakfastSelect.disabled = true;
+                    breakfastHidden.value = 'Included';
                 }
             } else {
                 details.style.display = 'none';
                 breakfastOption.style.display = 'none';
+                accommodationName.value = '';
+                roomType.value = '';
+                breakfastHidden.value = '';
             }
         }
 
         function toggleBoatDay() {
             const boatYes = document.getElementById('boatYes').checked;
             const boatDaySelection = document.getElementById('boatDaySelection');
-            const boatDayRadios = document.getElementsByName('boatDay');
+            const boatDaySelect = document.getElementById('boatDaySelect');
             
             if (boatYes) {
                 boatDaySelection.style.display = 'block';
-                // Make boat day selection required
-                boatDayRadios.forEach(radio => radio.required = true);
+                boatDaySelect.required = true;
             } else {
                 boatDaySelection.style.display = 'none';
-                // Clear selection and remove required when hiding
-                boatDayRadios.forEach(radio => {
-                    radio.checked = false;
-                    radio.required = false;
-                });
+                boatDaySelect.required = false;
+                boatDaySelect.value = '';
             }
         }
 
-        // Form submission handler
-document.getElementById('harrisBookingForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    // Check if Google Script URL has been set
-    if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
-        alert('Please update the Google Apps Script URL in the JavaScript code before submitting.');
-        return;
-    }
-    
-    // Show loading message
-    document.getElementById('submitButton').disabled = true;
-    document.getElementById('loadingMessage').style.display = 'block';
-    document.getElementById('successMessage').style.display = 'none';
-    document.getElementById('errorMessage').style.display = 'none';
-    
-    // Get form data
-    const formData = new FormData(e.target);
-    const accommodationValue = formData.get('accommodation');
-    
-    // Prepare data as URL parameters for no-cors mode
-    const params = new URLSearchParams();
-    params.append('name', formData.get('name') || '');
-    params.append('email', formData.get('email') || '');
-    params.append('phone', formData.get('phone') || '');
-    params.append('accommodationName', accommodationInfo[accommodationValue]?.name || '');
-    params.append('roomType', accommodationInfo[accommodationValue]?.roomType || '');
-    params.append('nights', formData.get('nights') || '');
-    params.append('checkin', formData.get('checkin') || '');
-    params.append('breakfast', document.getElementById('breakfast').checked ? 'Yes' : 
-                   (accommodationValue?.includes('drinishader') ? 'No' : 'Included'));
-    params.append('roomShare', formData.get('roomShare') || '');
-    params.append('boatTrip', formData.get('boatTrip') || '');
-    params.append('boatDay', formData.get('boatTrip') === 'yes' ? (formData.get('boatDay') || '') : 'N/A');
-    params.append('dietary', formData.get('dietary') || '');
-    params.append('comments', formData.get('comments') || '');
-    
-    // Submit to Google Sheets
-    fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: params.toString()
-    })
-    .then(() => {
-        // With no-cors, we can't read the response, so we assume success
-        document.getElementById('successMessage').style.display = 'block';
-        document.getElementById('harrisBookingForm').reset();
-        document.getElementById('accommodationDetails').style.display = 'none';
-        document.getElementById('breakfastOption').style.display = 'none';
-        document.getElementById('boatDaySelection').style.display = 'none';
-        
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('errorMessage').style.display = 'block';
-    })
-    .finally(() => {
-        document.getElementById('submitButton').disabled = false;
-        document.getElementById('loadingMessage').style.display = 'none';
-    });
-});
+        function submitForm() {
+            // Check if Google Script URL has been set
+            if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') {
+                alert('Please update the Google Apps Script URL in the JavaScript code before submitting.');
+                return false;
+            }
+            
+            // Fix breakfast field
+            const accommodation = document.getElementById('accommodation').value;
+            const breakfastSelect = document.getElementById('breakfastSelect');
+            const breakfastHidden = document.getElementById('breakfastHidden');
+            
+            if (!accommodation.includes('drinishader')) {
+                // For non-Drinishader, ensure breakfast is set to "Included"
+                breakfastSelect.name = '';
+                breakfastHidden.name = 'breakfast';
+            } else {
+                // For Drinishader, use the select value
+                breakfastSelect.name = 'breakfast';
+                breakfastHidden.name = '';
+            }
+            
+            // Fix boat day if not going on trip
+            const boatTrip = document.querySelector('input[name="boatTrip"]:checked');
+            const boatDaySelect = document.getElementById('boatDaySelect');
+            
+            if (boatTrip && boatTrip.value === 'no') {
+                boatDaySelect.value = 'N/A';
+            }
+            
+            // Show loading message
+            document.getElementById('submitButton').disabled = true;
+            document.getElementById('loadingMessage').style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            // Set a timeout to show success message
+            setTimeout(function() {
+                document.getElementById('successMessage').style.display = 'block';
+                document.getElementById('submitButton').disabled = false;
+                document.getElementById('loadingMessage').style.display = 'none';
+                
+                // Reset form after a delay
+                setTimeout(function() {
+                    document.getElementById('harrisBookingForm').reset();
+                    document.getElementById('accommodationDetails').style.display = 'none';
+                    document.getElementById('breakfastOption').style.display = 'none';
+                    document.getElementById('boatDaySelection').style.display = 'none';
+                }, 2000);
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 3000);
+            
+            return true; // Allow form submission
+        }
     </script>
 </body>
 </html>
